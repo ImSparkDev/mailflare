@@ -65,7 +65,7 @@ export default function AccountsPage() {
 			setDomainId(data.domains?.[0]?.id ?? "");
 		}).catch((error) => {
 			const text = error instanceof Error ? error.message : t("accounts.loadFailed");
-			setTeamRequired(/(pro|team) license/i.test(text) && !/seats/i.test(text));
+			setTeamRequired(false);
 			setMessage(text);
 		}).finally(() => setLoading(false));
 	}, []);
