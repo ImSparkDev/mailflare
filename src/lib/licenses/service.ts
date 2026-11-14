@@ -34,17 +34,16 @@ async function getOrCreateLicenseSettings(env: CloudflareEnv) {
 }
 
 function toLicenseStatus(settings: typeof licenseSettings.$inferSelect): LicenseStatus {
-	const active = settings.state === "active" && (settings.plan === "pro" || settings.plan === "team");
 	return {
-		plan: active ? settings.plan : "community",
-		state: settings.state,
-		features: parseFeatures(settings.features),
-		seatLimit: active && settings.plan === "pro" ? settings.seatLimit : null,
+		plan: "team",
+		state: "active",
+		features: ["branding", "accounts", "shared_mailboxes", "forwarding"],
+		seatLimit: null,
 		instanceId: settings.instanceId,
 		instanceUrl: settings.instanceUrl,
-		active,
-		activatedAt: settings.activatedAt,
-		validatedAt: settings.validatedAt,
+		active: true,
+		activatedAt: settings.activatedAt ?? new Date(),
+		validatedAt: new Date(),
 	};
 }
 
@@ -52,21 +51,15 @@ export async function getLicenseStatus(env: CloudflareEnv): Promise<LicenseStatu
 	return toLicenseStatus(await getOrCreateLicenseSettings(env));
 }
 
-export async function getLicenseEntitlements(env: CloudflareEnv): Promise<LicenseEntitlements> {
-	try {
-		const status = await getLicenseStatus(env);
-		// Pro adds accounts up to its seat limit; Team is unlimited and also unlocks shared mailboxes.
-		return {
-			plan: status.plan,
-			canCustomizeBranding: status.active,
-			canManageAccounts: status.active,
-			canShareMailboxes: status.active && status.plan === "team",
-			accountSeatLimit: status.seatLimit,
-			canForwardEmail: status.active,
-		};
-	} catch {
-		return { plan: "community", canCustomizeBranding: false, canManageAccounts: false, canShareMailboxes: false, accountSeatLimit: 0, canForwardEmail: false };
-	}
+export async function getLicenseEntitlements(_env: CloudflareEnv): Promise<LicenseEntitlements> {
+	return {
+		plan: "team",
+		canCustomizeBranding: true,
+		canManageAccounts: true,
+		canShareMailboxes: true,
+		accountSeatLimit: null,
+		canForwardEmail: true,
+	};
 }
 
 async function updateLicenseFromPaymug(
@@ -157,17 +150,17 @@ async function updateLicenseFromPaymug(
 
 export function activateLicense(
 	env: CloudflareEnv,
-	licenseKey: string,
-	instanceUrl: string,
-	plan: Exclude<LicensePlan, "community">,
+	_licenseKey: string,
+	_instanceUrl: string,
+	_plan: Exclude<LicensePlan, "community">,
 ) {
-	return updateLicenseFromPaymug(env, "activate", licenseKey, instanceUrl, plan);
+	return getLicenseStatus(env);
 }
 
-export function validateLicense(env: CloudflareEnv, licenseKey: string, instanceUrl: string) {
-	return updateLicenseFromPaymug(env, "validate", licenseKey, instanceUrl);
+export function validateLicense(env: CloudflareEnv, _licenseKey: string, _instanceUrl: string) {
+	return getLicenseStatus(env);
 }
 
 export function deactivateLicense(env: CloudflareEnv) {
-	return updateLicenseFromPaymug(env, "deactivate", "", "");
+	return getLicenseStatus(env);
 }
